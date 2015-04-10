@@ -1,0 +1,189 @@
+//execvp(); open(); close(); read(); write(); pipe(); dup2(); getcwd(); exit(); chdir(); wait();
+
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+#include "Command.h"
+#include "Variable.h"
+#include "Parser.h"
+
+void execute(Command *cmd);
+
+Command *cmds = NULL;
+Variable *vars = NULL;
+
+char cwd[1024];
+
+bool end = false;
+
+int main()
+{
+	//Setup Command Linked List
+	cmds = reset_commands(cmds);
+
+	//Get CWD
+	getcwd(cwd, sizeof(cwd)/sizeof(char));
+
+	do
+	{
+		int success = parser(cmds);
+		if(success == 0)
+		{
+			Command *cmd;
+			for(cmd = cmds; cmd != NULL && cmd->tokens != NULL; cmd = cmd->link)
+			{
+				int i;
+				for(i = 0; i < cmd->num_tokens; i++)
+				{
+					if(cmd->tokens[i][0] == '$')
+					{
+						Variable *var = NULL;
+						if((var = get_variable(vars, (cmd->tokens[i])+1)) != NULL)
+						{
+							cmd->tokens[i] = realloc(cmd->tokens[i],strlen(var->value)+1);
+							strcpy(cmd->tokens[i],var->value);
+						}
+					}
+				}
+			}
+			for(cmd = cmds; cmd != NULL && cmd->tokens != NULL; cmd = cmd->link)
+			{
+				execute(cmd);
+			}
+			for(cmd = cmds; cmd != NULL && cmd->tokens != NULL; cmd = cmd->link)
+			{
+				if(cmd->pipe)
+				{
+
+				}
+
+			}
+			cmds = reset_commands(cmds);
+		}
+	}while(!end);
+	return 0;
+}
+
+void execute(Command *cmd)
+{
+	if(cmd->pipe && cmd->link != NULL)
+	{
+		//redirect output
+		cmd->redirect_out = true;
+		free(cmd->redirect_out_file);
+		cmd->redirect_out_file = malloc(strlen(cmd->tokens[0])+2);
+		cmd->redirect_out_file[0] = '.';
+		strcpy(cmd->redirect_out_file+1, cmd->tokens[0]);
+
+		//redirect input
+		cmd->link->redirect_in = true;
+		free(cmd->link->redirect_in_file);
+		cmd->link->redirect_in_file = malloc(strlen(cmd->tokens[0])+2);
+		cmd->link->redirect_in_file[0] = '.';
+		strcpy(cmd->link->redirect_in_file+1, cmd->tokens[0]);
+
+		//add command to delete temp file when done
+		Command *rm_cmd = allocate_new_command(cmds);
+
+		char **rm_tok = allocate_new_token(rm_cmd);
+		(*rm_tok) = malloc(strlen("rm")+1);
+		strcpy((*rm_tok),"rm");
+
+		char **file_tok = allocate_new_token(rm_cmd);
+		(*file_tok) = malloc(strlen(cmd->redirect_out_file)+1);
+		strcpy((*file_tok),cmd->redirect_out_file);
+	}
+	if(cmd->redirect_in)
+	{
+		if(access(cmd->redirect_in_file,R_OK) >= 0) {
+			cmd->redirect_in_fd = dup(fileno(stdin));
+			freopen(cmd->redirect_in_file, "r", stdin);
+		} else {
+			perror("TSH");
+			return;
+		}
+	}
+	if(cmd->redirect_out)
+	{
+		fflush(stdout);
+		fgetpos(stdout, &(cmd->redirect_out_pos));
+		cmd->redirect_out_fd = dup(fileno(stdout));
+		freopen(cmd->redirect_out_file, "w", stdout);
+	}
+
+	if(strcmp(cmd->tokens[0],"exit") == 0)
+	{
+		end = true;
+	}
+	else if(strcmp(cmd->tokens[0], "pwd") == 0)
+	{
+		printf("%s\n",cwd);
+	}
+	else if(strcmp(cmd->tokens[0], "cd") == 0)
+	{
+		if(cmd->tokens[1] != NULL)
+		{
+			chdir(cmd->tokens[1]);
+		}
+		else
+		{
+			chdir(getenv("HOME"));
+		}
+		getcwd(cwd, sizeof(cwd)/sizeof(char));
+	}
+	else if(strcmp(cmd->tokens[0], "set") == 0)
+	{
+		if(cmd->tokens[2] != NULL)
+		{
+			vars = set_variable(vars, cmd->tokens[1], cmd->tokens[2]);
+		}
+		else if(cmd->tokens[1] != NULL)
+		{
+			vars = set_variable(vars, cmd->tokens[1], "");
+		}
+		else
+		{
+			printf("TSH: Error, no Variable name given!\n");
+		}
+	}
+	else if(strcmp(cmd->tokens[0], "list") == 0)
+	{
+		Variable *var;
+		for(var = vars; var != NULL; var = var->link)
+		{
+			printf("%s:%s\n",var->name, var->value);
+		}
+	}
+	else
+	{
+		//execute fork
+		if((cmd->pid = fork()) == 0)
+		{
+			if(execvp(cmd->tokens[0],cmd->tokens)<0) {
+				perror("TSH");
+				exit(1);
+			}
+		}
+		else
+		{
+			wait(&(cmd->status));
+		}
+	}
+
+	if(cmd->redirect_in)
+	{
+		dup2(cmd->redirect_in_fd, fileno(stdin));
+		close(cmd->redirect_in_fd);
+	}
+	if(cmd->redirect_out)
+	{
+		fflush(stdout);
+		dup2(cmd->redirect_out_fd, fileno(stdout));
+		close(cmd->redirect_out_fd);
+		clearerr(stdout);
+		fsetpos(stdout, &(cmd->redirect_out_pos));        /* for C9X */
+	}
+}
