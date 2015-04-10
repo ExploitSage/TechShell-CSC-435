@@ -12,11 +12,14 @@ Functional
 * Execution of Commands  
 * Multiple Commands (seprated by semicolon)  
 * Redirection  
-** In, out, and both simulationious  
+	* In, out, and both simulationious  
 * built in commands  
-Strings  
+* Strings  
 * Variable replacement using $  
- a)  
+
+Features
+
+*  a)  
 %> ls; echo "awesome"  
 Command.c  Command.o  Parser.c	Parser.o  techShell    techShell.o  Variable.h  
 Command.h  Makefile   Parser.h	Readme	  techShell.c  Variable.c   Variable.o  
