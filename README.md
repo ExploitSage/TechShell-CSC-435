@@ -4,7 +4,7 @@ CSC435 Operating Systems Tech Shell
 Gustave Abel Michel III  
 
 Non functional  
-	* True Piping  
+* True Piping  
 Functional  
 * Pseudo Pipe (using temp files)  
 * Execution of Commands  
