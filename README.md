@@ -6,15 +6,15 @@ Gustave Abel Michel III
 Non functional  
 	* True Piping  
 Functional  
-	* Pseudo Pipe (using temp files)  
-	* Execution of Commands  
-	* Multiple Commands (seprated by semicolon)  
-	* Redirection  
-	* * 	In, out, and both simulationious  
-	* built in commands  
-	Strings  
-	* Variable replacement using $  
-* a)  
+* Pseudo Pipe (using temp files)  
+* Execution of Commands  
+* Multiple Commands (seprated by semicolon)  
+* Redirection  
+** In, out, and both simulationious  
+* built in commands  
+Strings  
+* Variable replacement using $  
+ a)  
 %> ls; echo "awesome"  
 Command.c  Command.o  Parser.c	Parser.o  techShell    techShell.o  Variable.h  
 Command.h  Makefile   Parser.h	Readme	  techShell.c  Variable.c   Variable.o  
