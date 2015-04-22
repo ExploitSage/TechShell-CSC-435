@@ -71,19 +71,27 @@ void execute(Command *cmd)
 {
 	if(cmd->pipe && cmd->link != NULL)
 	{
+		//add number to peudo pipe file to incrament for n-pipes
+		char *pipe_file = malloc(strlen(cmd->tokens[0])+3);
+		pipe_file[0] = '.';
+		strcpy(pipe_file+1, cmd->tokens[0]);
+		pipe_file[strlen(cmd->tokens[0])+1] = '0';
+		pipe_file[strlen(cmd->tokens[0])+2] = '\0';
+		while(access(pipe_file,R_OK) >= 0) {
+			pipe_file[strlen(pipe_file)-1] = pipe_file[strlen(pipe_file)-1]+1;
+		}
+
 		//redirect output
 		cmd->redirect_out = true;
 		free(cmd->redirect_out_file);
-		cmd->redirect_out_file = malloc(strlen(cmd->tokens[0])+2);
-		cmd->redirect_out_file[0] = '.';
-		strcpy(cmd->redirect_out_file+1, cmd->tokens[0]);
+		cmd->redirect_out_file = malloc(strlen(pipe_file)+1);
+		strcpy(cmd->redirect_out_file, pipe_file);
 
 		//redirect input
 		cmd->link->redirect_in = true;
 		free(cmd->link->redirect_in_file);
-		cmd->link->redirect_in_file = malloc(strlen(cmd->tokens[0])+2);
-		cmd->link->redirect_in_file[0] = '.';
-		strcpy(cmd->link->redirect_in_file+1, cmd->tokens[0]);
+		cmd->link->redirect_in_file = malloc(strlen(pipe_file)+1);
+		strcpy(cmd->link->redirect_in_file, pipe_file);
 
 		//add command to delete temp file when done
 		Command *rm_cmd = allocate_new_command(cmds);
@@ -93,7 +101,7 @@ void execute(Command *cmd)
 		strcpy((*rm_tok),"rm");
 
 		char **file_tok = allocate_new_token(rm_cmd);
-		(*file_tok) = malloc(strlen(cmd->redirect_out_file)+1);
+		(*file_tok) = malloc(strlen(pipe_file)+1);
 		strcpy((*file_tok),cmd->redirect_out_file);
 	}
 	if(cmd->redirect_in)
