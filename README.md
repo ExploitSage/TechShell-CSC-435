@@ -1,5 +1,5 @@
-# TechShell
-CSC435 Operating Systems Tech Shell
+# TechShell-CSC-435
+Shell Program in C for CSC-435 Operating Systems Course
 
 Gustave Abel Michel III  
 
